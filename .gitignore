@@ -42,3 +42,5 @@ go.work.sum
 result/
 .envrc
 .direnv/
+
+res/
