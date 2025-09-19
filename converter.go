@@ -34,7 +34,13 @@ func filterWallsAudioVisualStreams(input *f.Stream, angle int32) *f.Stream {
 	return f.Filter([]*f.Stream{v0, v1, v2}, "hstack", f.Args{"inputs=3"})
 }
 
-func convertVideo(inputStream *f.Stream, output string, angle int32) {
+func filterFloorVisualStream(input *f.Stream, angle int32) *f.Stream {
+	return input.Video().
+		Filter("v360", f.Args{"equirect:rectilinear"}, f.KwArgs{"v_fov": 60, "yaw": clampAngle(angle), "pitch": -90}).
+		Filter("scale", f.Args{"1920:1920"}).Filter("setsar", f.Args{"1:1"})
+}
+
+func convertWalls(inputStream *f.Stream, output string, angle int32) {
 	inputVideo := filterWallsAudioVisualStreams(inputStream, angle)
 	inputAudio := inputStream.Audio()
 
@@ -42,7 +48,25 @@ func convertVideo(inputStream *f.Stream, output string, angle int32) {
 		f.KwArgs{
 			"c:a": "copy", // copy over audio unchanged
 			"c:v": "h264", // convert video to h264: most widely compatible with intuiface
-			"t":   "1",    // TODO: remove this, just renders out the first second.
+		})
+
+	cmd := out.OverWriteOutput().Compile()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		panic(err)
+	} else {
+		return
+	}
+}
+
+func convertFloor(inputStream *f.Stream, output string, angle int32) {
+	inputVideo := filterFloorVisualStream(inputStream, angle)
+
+	out := f.Output([]*f.Stream{inputVideo}, output,
+		f.KwArgs{
+			"c:a": "copy",
+			"c:v": "h264",
 		})
 
 	cmd := out.OverWriteOutput().Compile()
@@ -79,20 +103,18 @@ func clampAngle(angle int32) int32 {
 	clamped := angle % 360
 
 	// convert from range [0, 360] to [-180, 180] with 0 staying in the middle for both
-	var ranged int32
 	if clamped < 180 {
-		ranged = clamped
+		return clamped
 	} else {
-		ranged = clamped - 360
+		return clamped - 360
 	}
-
-	// reverse (for whatever reason, ffmpeg likes it like this)
-	return ranged
 }
 
 func errBox(text string) {
 	dialog.Message("%s", text).Title("Error").Error()
 }
+
+func handleButton(input string, output string)
 
 func loop() {
 	g.SingleWindow().Layout(
@@ -114,7 +136,7 @@ func loop() {
 			g.InputInt(&selectedAngle),
 		),
 		g.Row(
-			g.Button("Convert").OnClick(func() {
+			g.Button("Convert Walls and Floor").OnClick(func() {
 				if inputLocation == "" {
 					errBox("Input location not selected.")
 					return
@@ -128,7 +150,8 @@ func loop() {
 
 				errBox("Converting! The program might hang until the conversion is complete.")
 
-				convertVideo(input, outputLocation, selectedAngle)
+				convertFloor(input, outputLocation+".floor.mp4", selectedAngle)
+				convertWalls(input, outputLocation, selectedAngle)
 
 				errBox("Done!")
 			}),
@@ -137,6 +160,6 @@ func loop() {
 }
 
 func main() {
-	wnd := g.NewMasterWindow("On Drop Demo", 600, 200, g.MasterWindowFlagsNotResizable)
+	wnd := g.NewMasterWindow("Cave 360 Video Converter", 650, 300, g.MasterWindowFlagsNotResizable)
 	wnd.Run(loop)
 }
