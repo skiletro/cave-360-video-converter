@@ -19,6 +19,7 @@
               go
               gopls
               ffmpeg_8
+              apple-sdk_15
             ];
           };
 

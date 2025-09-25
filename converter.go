@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"image"
 	"os"
 
 	g "github.com/AllenDang/giu"
@@ -9,12 +12,14 @@ import (
 )
 
 var (
-	inputLocation  string
-	outputLocation string
-	selectedAngle  int32
+	inputLocation   string
+	outputLocation  string
+	selectedAngle   int32
+	previewImageBuf image.Image
+	wnd             *g.MasterWindow
 )
 
-func filterWallsAudioVisualStreams(input *f.Stream, angle int32) *f.Stream {
+func filterWallsVisualStream(input *f.Stream, angle int32) *f.Stream {
 	left := clampAngle(angle - 90)
 	mid := clampAngle(angle)
 	right := clampAngle(angle + 90)
@@ -41,7 +46,7 @@ func filterFloorVisualStream(input *f.Stream, angle int32) *f.Stream {
 }
 
 func convertWalls(inputStream *f.Stream, output string, angle int32) {
-	inputVideo := filterWallsAudioVisualStreams(inputStream, angle)
+	inputVideo := filterWallsVisualStream(inputStream, angle)
 	inputAudio := inputStream.Audio()
 
 	out := f.Output([]*f.Stream{inputVideo, inputAudio}, output,
@@ -79,24 +84,29 @@ func convertFloor(inputStream *f.Stream, output string, angle int32) {
 	}
 }
 
-func convertFrame(inputStream *f.Stream, output string, angle int32) {
-	inputVideo := filterWallsAudioVisualStreams(inputStream, angle)
+func convertWallFrame(inputStream *f.Stream, angle int32) {
+	inputVideo := filterWallsVisualStream(inputStream, angle)
 
-	out := f.Output([]*f.Stream{inputVideo}, output,
-		f.KwArgs{
-			"c:v":     "mjpeg",
-			"vframes": 1,
-		})
-
-	cmd := out.OverWriteOutput().Compile()
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	buf := bytes.NewBuffer(nil)
+	err := inputVideo.
+		Filter("select", f.Args{fmt.Sprintf("gte(n,%d)", 1)}).
+		// Filter("scale", f.Args{"1280:240"}).Filter("setsar", f.Args{"1:1"}).
+		Output("pipe:", f.KwArgs{"vframes": 1, "format": "image2", "vcodec": "mjpeg"}).
+		WithOutput(buf, os.Stdout).
+		Run()
+	if err != nil {
 		panic(err)
-	} else {
-		return
 	}
+
+	img, _, err := image.Decode(buf)
+	if err != nil {
+		panic(err)
+	}
+
+	previewImageBuf = img
 }
+
+// TODO: convertFloorFrame
 
 func clampAngle(angle int32) int32 {
 	// clamp rotation
@@ -115,12 +125,16 @@ func errBox(text string) {
 }
 
 func loop() {
+	width, height := wnd.GetSize()
+
 	g.SingleWindow().Layout(
 		g.Row(
 			g.Label("Input"),
 			g.InputText(&inputLocation),
 			g.Button("Browse").OnClick(func() {
 				inputLocation, _ = dialog.File().Filter("Video", "mp4").Title("Load video").Load()
+				input := f.Input(inputLocation)
+				convertWallFrame(input, selectedAngle)
 			}),
 		),
 		g.Row(
@@ -153,11 +167,26 @@ func loop() {
 
 				errBox("Done!")
 			}),
+			g.Button("Refresh Preview").OnClick(func() {
+				if inputLocation == "" {
+					errBox("Input location not selected.")
+					return
+				}
+
+				input := f.Input(inputLocation)
+
+				convertWallFrame(input, selectedAngle)
+			}),
+		),
+		g.Row(
+			g.ImageWithRgba(previewImageBuf).Size(float32(width), float32(height)),
 		),
 	)
 }
 
 func main() {
-	wnd := g.NewMasterWindow("Cave 360 Video Converter", 650, 300, g.MasterWindowFlagsNotResizable)
+	previewImageBuf = image.NewRGBA(image.Rect(0, 0, 100, 100))
+
+	wnd = g.NewMasterWindow("Cave 360 Video Converter", 650, 300, 0)
 	wnd.Run(loop)
 }
