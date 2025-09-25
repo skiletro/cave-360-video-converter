@@ -114,8 +114,6 @@ func errBox(text string) {
 	dialog.Message("%s", text).Title("Error").Error()
 }
 
-func handleButton(input string, output string)
-
 func loop() {
 	g.SingleWindow().Layout(
 		g.Row(
