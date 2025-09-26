@@ -1,4 +1,4 @@
-module caveconverter/converter
+module github.com/skiletro/cave-360-video-converter/main
 
 go 1.25.0
 
@@ -6,9 +6,6 @@ require (
 	github.com/AllenDang/giu v0.13.0
 	github.com/sqweek/dialog v0.0.0-20240226140203-065105509627
 	github.com/u2takey/ffmpeg-go v0.5.0
-)
-
-require (
 	github.com/AllenDang/cimgui-go v1.3.2-0.20250409185506-6b2ff1aa26b5 // indirect
 	github.com/AllenDang/go-findfont v0.0.0-20200702051237-9f180485aeb8 // indirect
 	github.com/TheTitanrain/w32 v0.0.0-20200114052255-2654d97dbd3d // indirect
