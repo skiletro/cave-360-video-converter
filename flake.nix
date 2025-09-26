@@ -19,16 +19,8 @@
               go
               gopls
               ffmpeg_8
-              apple-sdk_15
+              apple-sdk_14
             ];
-          };
-
-          packages.default = pkgs.buildGoModule {
-            pname = "caveconverter";
-            version = "0";
-            src = ./.;
-            buildInputs = [pkgs.ffmpeg_8];
-            vendorHash = "sha256-hfXCzaS7JqxZPHQ1wxOIxGZgbq3Qf0W83CBxjpbOIQU=";
           };
         };
     };
