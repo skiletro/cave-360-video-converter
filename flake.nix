@@ -14,16 +14,22 @@
 
       perSystem =
         { pkgs, lib, ... }:
+        let
+          inherit (pkgs.stdenvNoCC.hostPlatform) isLinux isDarwin;
+        in
         {
           devShells.default = pkgs.mkShell {
-            buildInputs = with pkgs; [
-              go
-              gopls
-              ffmpeg_8
-              pkg-config
-              gtk3
-              glfw
-            ];
+            buildInputs =
+              with pkgs;
+              [
+                go
+                gopls
+                ffmpeg_8
+                pkg-config
+                gtk3
+                glfw
+              ]
+              ++ lib.optionals isDarwin [pkgs.apple-sdk_14];
           };
           packages =
             let
@@ -31,8 +37,6 @@
               version = "0.1.0";
               src = ./.;
               vendorHash = "sha256-wUFN6/vQ41Orobryr81MoDlnQ3vK3mspg+bhI0vD9C0=";
-
-              inherit (pkgs.stdenvNoCC.hostPlatform) isLinux isDarwin;
             in
             {
               default = pkgs.buildGoModule {
