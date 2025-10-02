@@ -6,6 +6,7 @@ import (
 	"image"
 	"os"
 	"os/exec"
+	"runtime"
 
 	g "github.com/AllenDang/giu"
 	"github.com/sqweek/dialog"
@@ -113,7 +114,7 @@ func clampAngle(angle int32) int32 {
 }
 
 func dialogBox(text string, isError bool) {
-	d := dialog.Message("%s", text).Title("Error")
+	d := dialog.Message("%s", text).Title("Cave Converter")
 
 	if isError {
 		d.Error()
@@ -190,12 +191,53 @@ func loop() {
 	)
 }
 
-func main() {
+func ffmpegIsInstalledInPath() bool {
 	_, err := exec.LookPath("ffmpeg")
-	if err != nil {
-		dialogBox("Ffmpeg is not installed into the PATH. This program will not work without it.", true)
+	if err == nil {
+		return true
+	} else {
+		return false
+	}
+}
+
+func runCommand(args ...string) (p *os.Process, err error) {
+	if args[0], err = exec.LookPath(args[0]); err == nil {
+		var procAttr os.ProcAttr
+		procAttr.Files = []*os.File{
+			os.Stdin,
+			os.Stdout, os.Stderr,
+		}
+		p, err := os.StartProcess(args[0], args, &procAttr)
+		if err == nil {
+			return p, nil
+		}
+	}
+	return nil, err
+}
+
+func checkIfFfmpegIsPresent() {
+	if ffmpegIsInstalledInPath() {
 		return
 	}
+
+	if runtime.GOOS == "windows" && dialog.Message("%s", "Ffmpeg is not installed. Would you like to install it?").Title("Are you sure?").YesNo() {
+		if proc, err := runCommand("winget", "install", "--id=Gyan.FFmpeg", "-e"); err == nil {
+			proc.Wait()
+			dialogBox("Ffmpeg should now be installed! Please restart the program.", false)
+			os.Exit(1)
+		} else {
+			dialogBox("Could not install.\n\n"+err.Error(), true)
+			os.Exit(1)
+		}
+	}
+
+	// if we haven't returned yet, we don't have ffmpeg so we should close.
+	dialogBox("Ffmpeg is not present in the PATH.\nThis program will not function without it.", true)
+	os.Exit(1)
+}
+
+func main() {
+	checkIfFfmpegIsPresent()
 
 	previewWallsImage = image.NewRGBA(image.Rect(0, 0, 100, 100))
 
