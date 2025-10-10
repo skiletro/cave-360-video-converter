@@ -61,9 +61,9 @@ func saveStreamsToFile(videoStream *f.Stream, audioStream *f.Stream, outputFile 
 	}
 }
 
-func convertWallFrame(inputStream *f.Stream, angle int32) {
+func convertWallFrame(inputStream *f.Stream, angle int32) image.Image {
 	inputVideo := applyFilterToWallStream(inputStream, angle)
-	previewWallsImage = streamToFirstFrameAsImage(inputVideo)
+	return streamToFirstFrameAsImage(inputVideo)
 }
 
 func streamToFirstFrameAsImage(stream *f.Stream) image.Image {

@@ -3,93 +3,125 @@ package main
 import (
 	"image"
 
-	g "github.com/AllenDang/giu"
-	"github.com/sqweek/dialog"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/widget"
+
+	d "github.com/sqweek/dialog"
 	f "github.com/u2takey/ffmpeg-go"
 )
 
 var (
-	inputLocation     string
-	outputLocation    string
-	selectedAngle     int32
-	previewWallsImage image.Image
-	previewFloorimage image.Image
-	wnd               *g.MasterWindow
+	img            image.Image = image.NewRGBA(image.Rect(0, 0, 1, 1))
+	activityStatus *widget.Activity
 )
 
-func loop() {
-	width, _ := wnd.GetSize()
+func main() {
+	a := app.New()
+	w := a.NewWindow("Cave Video Converter")
 
-	g.SingleWindow().Layout(
-		g.Align(g.AlignCenter).To(
-			g.Row(
-				g.Label("Input"),
-				g.InputText(&inputLocation),
-				g.Button("Browse").OnClick(func() {
-					var err error
-					inputLocation, err = dialog.File().Filter("Video files", "mp4").Title("Load video").Load()
+	// Construct UI
 
-					if err == nil {
-						input := f.Input(inputLocation)
-						convertWallFrame(input, selectedAngle)
-					}
-				}),
-			),
-			g.Row(
-				g.Label("Output"),
-				g.InputText(&outputLocation),
-				g.Button("Browse").OnClick(func() {
-					outputLocation, _ = dialog.File().Filter("Video files", "mp4").Title("Output video location").Save()
-				}),
-			),
-			g.Row(
-				g.Label("Rotational Angle"),
-				g.InputInt(&selectedAngle),
-			),
-			g.Row(
-				g.Button("Convert Walls and Floor").OnClick(func() {
-					if inputLocation == "" {
-						errorDialog("Input location not selected.")
-						return
-					}
+	// Construct Preview
+	outputWallPreviewImage := canvas.NewImageFromImage(img)
+	outputWallPreviewImage.SetMinSize(fyne.NewSize(1280, 240))
+	activityStatus = widget.NewActivity()
 
-					input := f.Input(inputLocation)
+	previewContainer := container.NewStack(outputWallPreviewImage, activityStatus)
 
-					if outputLocation == "" {
-						errorDialog("Output location not selected.")
-						return
-					}
+	// Construct Angle
+	angleLabel := widget.NewLabel("Angle")
+	angleBox := widget.NewEntry()
+	angleBox.PlaceHolder = "0"
 
-					infoDialog("Converting!\nThe program might hang until the conversion is complete.")
+	angleContainer := container.NewHBox(angleLabel, angleBox)
 
-					convertWalls(input, outputLocation+".walls.mp4", selectedAngle)
-					convertFloor(input, outputLocation+".floor.mp4", selectedAngle)
+	// Construct Form Section
+	inputLabel := widget.NewLabel("Input")
+	inputBox := widget.NewEntry()
+	inputSelect := widget.NewButton("Browse", func() {
+		if out, err := d.File().Filter("Video Files", "mp4").Title("Load Video").Load(); err == nil {
+			inputBox.Text = out
+			inputBox.Refresh()
+			go previewRoutine(inputBox.Text, stringToInt32(angleBox.Text), outputWallPreviewImage)
+		}
+	})
 
-					infoDialog("Done!")
-				}),
-				g.Button("Refresh Preview").OnClick(func() {
-					if inputLocation == "" {
-						errorDialog("Input location not selected.")
-						return
-					}
+	outputLabel := widget.NewLabel("Output")
+	outputBox := widget.NewEntry()
+	outputSelect := widget.NewButton("Browse", func() {
+		if out, err := d.File().Filter("Video Files", "mp4").Title("Output Video Location").Save(); err == nil {
+			outputBox.Text = out
+			outputBox.Refresh()
+		}
+	})
+	formContainer := container.NewGridWithColumns(3, inputLabel, inputBox, inputSelect, outputLabel, outputBox, outputSelect)
 
-					input := f.Input(inputLocation)
+	// Construct Buttons Section
+	convertButton := widget.NewButton("Convert", func() {
+		if inputBox.Text == "" {
+			errorDialog("Input location not specified.")
+			return
+		}
 
-					convertWallFrame(input, selectedAngle)
-				}),
-			),
-			g.Row(
-				g.ImageWithRgba(previewWallsImage).Size(float32(width), float32(width)*(9.0/48.0)),
-			),
-		),
-	)
+		if outputBox.Text == "" {
+			errorDialog("Output location not specified.")
+			return
+		}
+
+		go convertRoutine(inputBox.Text, stringToInt32(angleBox.Text), outputBox.Text)
+	})
+	previewButton := widget.NewButton("Preview", func() {
+		if inputBox.Text == "" {
+			errorDialog("Input location not specified.")
+			return
+		}
+
+		go previewRoutine(inputBox.Text, stringToInt32(angleBox.Text), outputWallPreviewImage)
+	})
+
+	actionButtonsContainer := container.NewHBox(convertButton, previewButton)
+
+	// Construct Final Layout
+	w.SetContent(container.NewVBox(formContainer, angleContainer, actionButtonsContainer, previewContainer))
+
+	w.SetFixedSize(true)
+	w.ShowAndRun()
 }
 
-func main() {
-	checkIfFfmpegIsPresent()
+// Routines
+func previewRoutine(inputPath string, angleInt int32, outputImage *canvas.Image) {
+	activityStatus.Show()
+	activityStatus.Start()
 
-	previewWallsImage = image.NewRGBA(image.Rect(0, 0, 100, 100))
+	inputStream := f.Input(inputPath)
 
-	wnd = g.NewMasterWindow("Cave 360 Video Converter", 650, 300, 0)
-	wnd.Run(loop)
+	outputImage.Image = convertWallFrame(inputStream, angleInt)
+
+	outputImage.Refresh()
+
+	activityStatus.Stop()
+	activityStatus.Hide()
+}
+
+func convertRoutine(inputPath string, angleInt int32, outputPath string) {
+	activityStatus.Show()
+	activityStatus.Start()
+
+	inputStream := f.Input(inputPath)
+
+	infoDialog("Ready to convert the walls. Continue when ready.")
+	convertWalls(inputStream, outputPath+".walls.mp4", angleInt)
+	infoDialog("Walls converted sucessfully.\nSaved to " + outputPath + ".walls.mp4")
+
+	infoDialog("Ready to convert the floor. Continue when ready.")
+	convertFloor(inputStream, outputPath+".floor.mp4", angleInt)
+	infoDialog("Floor converted sucessfully.\nSaved to " + outputPath + ".floor.mp4")
+
+	infoDialog("Conversion complete!")
+
+	activityStatus.Stop()
+	activityStatus.Hide()
 }

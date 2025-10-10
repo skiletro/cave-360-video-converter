@@ -4,9 +4,23 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 
 	d "github.com/sqweek/dialog"
 )
+
+func stringToInt32(input string) int32 {
+	if input == "" {
+		return int32(0)
+	}
+
+	if output, err := strconv.Atoi(input); err == nil {
+		return int32(output)
+	} else {
+		errorDialog("Not a number. Defaulting to zero.")
+		return int32(0)
+	}
+}
 
 func clampAngle(angle int32) int32 {
 	// clamp rotation
