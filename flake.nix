@@ -77,6 +77,7 @@
                     pkgs.apple-sdk_14
                   ];
 
+                meta.mainProgram = "main";
               };
 
               windows = pkgs.pkgsCross.mingwW64.buildGoModule {
