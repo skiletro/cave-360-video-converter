@@ -19,6 +19,8 @@ var (
 )
 
 func main() {
+	checkIfFfmpegIsPresent()
+
 	a := app.New()
 	w := a.NewWindow("Cave Video Converter")
 
