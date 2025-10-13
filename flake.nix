@@ -5,15 +5,19 @@
   };
 
   outputs =
-    inputs@{ flake-parts, ... }:
-    flake-parts.lib.mkFlake { inherit inputs; } {
+    inputs@{ flake-parts, self, ... }:
+    flake-parts.lib.mkFlake { inherit inputs self; } {
       systems = [
         "aarch64-darwin"
         "x86_64-linux"
       ];
 
       perSystem =
-        { pkgs, lib, ... }:
+        {
+          pkgs,
+          lib,
+          ...
+        }:
         let
           inherit (pkgs.stdenvNoCC.hostPlatform) isLinux isDarwin;
         in
@@ -29,14 +33,23 @@
                 gtk3
                 glfw
               ]
-              ++ lib.optionals isDarwin [pkgs.apple-sdk_14];
+              ++ lib.optionals isDarwin [ pkgs.apple-sdk_14 ];
           };
           packages =
             let
+              ss = lib.substring;
+              lmd = self.lastModifiedDate;
+
               pname = "cave-360-video-converter";
               version = "0.1.0";
               src = ./.;
-              vendorHash = "sha256-wUFN6/vQ41Orobryr81MoDlnQ3vK3mspg+bhI0vD9C0=";
+              vendorHash = "sha256-GgdEkx+HDBAEq0+UYUrdv0gunFZMxszTcwC71264mfk="; # update me if deps change!
+              ldflags = [
+                "-X 'main.VERSION=v${version}'" # for ver number in titlebar
+                "-X 'main.LAST_MODIFIED=Built ${ss 6 2 lmd}/${ss 4 2 lmd}/${ss 0 4 lmd}'"
+                "-s" # omits symbol table
+                "-w" # omits DWARF debug info
+              ];
             in
             {
               default = pkgs.buildGoModule {
@@ -45,6 +58,7 @@
                   version
                   src
                   vendorHash
+                  ldflags
                   ;
 
                 nativeBuildInputs = [ pkgs.ffmpeg_8 ];
@@ -61,6 +75,7 @@
                   ++ lib.optionals isDarwin [
                     pkgs.apple-sdk_14
                   ];
+
               };
 
               windows = pkgs.pkgsCross.mingwW64.buildGoModule {
@@ -70,6 +85,8 @@
                   src
                   vendorHash
                   ;
+
+                ldflags = ldflags ++ [ "-H=windowsgui" ];
               };
             };
         };

@@ -15,6 +15,8 @@ import (
 )
 
 var (
+	VERSION        string      = "dev"
+	LAST_MODIFIED  string      = "unknown"
 	img            image.Image = image.NewRGBA(image.Rect(0, 0, 1, 1))
 	activityStatus *widget.Activity
 )
@@ -23,7 +25,7 @@ func main() {
 	checkIfFfmpegIsPresent()
 
 	a := app.New()
-	w := a.NewWindow("Cave Video Converter")
+	w := a.NewWindow(fmt.Sprintf("Cave Video Converter - %s - %s", VERSION, LAST_MODIFIED))
 
 	// Construct UI
 
