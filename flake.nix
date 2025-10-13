@@ -32,6 +32,7 @@
                 pkg-config
                 gtk3
                 glfw
+                fyne
               ]
               ++ lib.optionals isDarwin [ pkgs.apple-sdk_14 ];
           };

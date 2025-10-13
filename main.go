@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"image/color"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -13,6 +14,8 @@ import (
 	d "github.com/sqweek/dialog"
 	f "github.com/u2takey/ffmpeg-go"
 )
+
+//go:generate fyne bundle -o bundled.go overlay.png
 
 var (
 	VERSION        string      = "dev"
@@ -30,11 +33,14 @@ func main() {
 	// Construct UI
 
 	// Construct Preview
+	overlayImage := canvas.NewImageFromResource(resourceOverlayPng)
+	overlayImage.FillMode = canvas.ImageFillStretch
+	underlayImage := canvas.NewRectangle(color.RGBA{100, 100, 100, 255})
 	outputWallPreviewImage := canvas.NewImageFromImage(img)
 	outputWallPreviewImage.SetMinSize(fyne.NewSize(1280, 240))
 	activityStatus = widget.NewActivity()
 
-	previewContainer := container.NewStack(outputWallPreviewImage, activityStatus)
+	previewContainer := container.NewStack(underlayImage, outputWallPreviewImage, overlayImage, activityStatus)
 
 	// Construct Angle
 	angleLabel := widget.NewLabel("Angle")
