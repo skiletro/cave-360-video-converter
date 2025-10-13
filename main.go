@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image"
 
 	"fyne.io/fyne/v2"
@@ -84,7 +85,25 @@ func main() {
 		go previewRoutine(inputBox.Text, stringToInt32(angleBox.Text), outputWallPreviewImage)
 	})
 
-	actionButtonsContainer := container.NewHBox(convertButton, previewButton)
+	rotateLeftButton := widget.NewButton("<", func() {
+		angleBox.Text = fmt.Sprintf("%d", stringToInt32(angleBox.Text)-int32(10))
+		angleBox.Refresh()
+
+		if inputBox.Text != "" {
+			go previewRoutine(inputBox.Text, stringToInt32(angleBox.Text), outputWallPreviewImage)
+		}
+	})
+
+	rotateRightButton := widget.NewButton(">", func() {
+		angleBox.Text = fmt.Sprintf("%d", stringToInt32(angleBox.Text)+int32(10))
+		angleBox.Refresh()
+
+		if inputBox.Text != "" {
+			go previewRoutine(inputBox.Text, stringToInt32(angleBox.Text), outputWallPreviewImage)
+		}
+	})
+
+	actionButtonsContainer := container.NewCenter(container.NewHBox(rotateLeftButton, convertButton, previewButton, rotateRightButton))
 
 	// Construct Final Layout
 	w.SetContent(container.NewVBox(formContainer, angleContainer, actionButtonsContainer, previewContainer))
