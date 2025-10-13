@@ -42,7 +42,7 @@
               lmd = self.lastModifiedDate;
 
               pname = "cave-360-video-converter";
-              version = "0.1.0";
+              version = "0.2.0";
               src = ./.;
               vendorHash = "sha256-GgdEkx+HDBAEq0+UYUrdv0gunFZMxszTcwC71264mfk="; # update me if deps change!
               ldflags = [
